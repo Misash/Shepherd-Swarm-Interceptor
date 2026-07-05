@@ -37,8 +37,10 @@ class World {
   print(target: Shahed, swarm: Swarm): void {
     const overlay = this.grid.map(row => [...row]);
     overlay[this.clampY(target.y)][this.clampX(target.x)] = "X";
-    for (const d of swarm.drones) {
-      overlay[this.clampY(d.y)][this.clampX(d.x)] = "O";
+    for (let i = 0; i < swarm.drones.length; i++) {
+      const d = swarm.drones[i];
+      overlay[this.clampY(d.y)][this.clampX(d.x)] =
+        i === swarm.eliminated ? "★" : "O";
     }
     const header = "   " + this.grid[0].map((_, i) => String(i).padStart(2, " ")).join(" ");
     console.log(header);
@@ -67,8 +69,14 @@ class Shahed {
     move(world: World): void {
         this.x += this.vx;
         this.y += this.vy;
-        this.x = world.clampX(this.x);
-        this.y = world.clampY(this.y);
+        if (Math.round(this.x) >= world.cols || Math.round(this.x) < 0) {
+            this.vx = -this.vx;
+            this.x = world.clampX(this.x);
+        }
+        if (Math.round(this.y) >= world.rows || Math.round(this.y) < 0) {
+            this.vy = -this.vy;
+            this.y = world.clampY(this.y);
+        }
     }
 
     heading(): number {
@@ -84,20 +92,33 @@ class Drone {
         this.x = x;
         this.y = y;
     }
-} 
+}
+
+type Role = "STRIKER" | "SHEPHERD";
 
 type Phase = "CHASE" | "FOLLOW" | "FORM" | "ENGAGE";
 class Swarm {
     drones: Drone[] = []
     phase: Phase = "CHASE";
     phaseStartTime = 0;
+    activeIndex: number | null = null;
+    eliminated: number | null = null;
 
-    // parameters
+    // phase transition parameters
     minChaseTime = 5.0;      // τ_chase
-    formationRadius = 40;    // r_formation
-    readyTolerance = 15;     // ε_ready
-    followThreshold = 80;    
-    formThreshold = 45; 
+    followThreshold = 10;
+    formThreshold = 6;
+
+    // formation parameters
+    formationRadius = 5;     // r_formation
+    readyTolerance = 2;      // ε_ready
+    orbitSpeed = 0.4;        // v_orbit (tangential)
+
+    // pursuit parameters
+    strikeThreshold = 4;     // switch predictive ↔ direct
+    tauHorizon = 1.0;        // τ_horizon (prediction horizon)
+    strikeMultiplier = 1.5;  // k_strike
+    interceptRadius = 1.0;   // distance to consider target eliminated
 
 
     constructor(drones: Drone[]){
@@ -141,6 +162,7 @@ class Swarm {
         return total / this.drones.length;
     }
 
+    // eq 3.2: f_i(t) = p_target + r_formation · [cos(θ + i·π/2), sin(θ + i·π/2)]
     private formationSlot(target: Shahed, i: number): { x: number, y: number } {
         const heading = target.heading();
         const angle = heading + (i * Math.PI) / 2;
@@ -160,6 +182,76 @@ class Swarm {
         return ready;
     }
 
+    // eq 3.3: a*(t) = argmin ‖p_i - p_target‖
+    private selectActiveInterceptor(target: Shahed): number {
+        let best = 0;
+        let bestDist = Infinity;
+        this.drones.forEach((d, i) => {
+            const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = i;
+            }
+        });
+        return best;
+    }
+
+    // check if target has been intercepted by active interceptor
+    intercepted(target: Shahed): boolean {
+        if (this.phase !== "ENGAGE" || this.activeIndex === null) return false;
+        const d = this.drones[this.activeIndex];
+        const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2);
+        if (dist <= this.interceptRadius) {
+            this.eliminated = this.activeIndex;
+            return true;
+        }
+        return false;
+    }
+
+    // eq 3.4: predictive pursuit (d > strikeThreshold)
+    private predictivePursuit(target: Shahed, i: number): void {
+        const d = this.drones[i];
+        const futureX = target.x + target.vx * this.tauHorizon;
+        const futureY = target.y + target.vy * this.tauHorizon;
+        const dx = futureX - d.x;
+        const dy = futureY - d.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.5) {
+            d.x += (dx / dist) * this.strikeMultiplier;
+            d.y += (dy / dist) * this.strikeMultiplier;
+        }
+    }
+
+    // direct pursuit (d ≤ strikeThreshold)
+    private directPursuit(target: Shahed, i: number): void {
+        const d = this.drones[i];
+        const dx = target.x - d.x;
+        const dy = target.y - d.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.5) {
+            d.x += (dx / dist) * this.strikeMultiplier;
+            d.y += (dy / dist) * this.strikeMultiplier;
+        }
+    }
+
+    // ring orbit dynamics for shepherds: radial + tangential velocity
+    private orbitFormation(target: Shahed, i: number): void {
+        const d = this.drones[i];
+        const slot = this.formationSlot(target, i);
+        const dx = slot.x - d.x;
+        const dy = slot.y - d.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.5) {
+            // radial component: pull toward slot
+            d.x += (dx / dist) * this.orbitSpeed * 0.6;
+            d.y += (dy / dist) * this.orbitSpeed * 0.6;
+            // tangential component: orbit along ring
+            const theta = target.heading() + (i * Math.PI) / 2;
+            d.x += -Math.sin(theta) * this.orbitSpeed * 0.4;
+            d.y += Math.cos(theta) * this.orbitSpeed * 0.4;
+        }
+    }
+
     step(target: Shahed, currentTime: number) {
         const avgDist = this.averageDistance(target);
         const formQuality = this.formationReadiness(target);
@@ -170,22 +262,44 @@ class Swarm {
             this.phase = newPhase;
             this.phaseStartTime = currentTime;
         }
+        if (this.phase === "ENGAGE") {
+            this.activeIndex = this.selectActiveInterceptor(target);
+        }
     }
 
     moveDrones(target: Shahed, world: World) {
-        const speed = 1;
-        for (let i = 0; i < this.drones.length; i++) {
-            const d = this.drones[i];
-            const slot = this.formationSlot(target, i);
-            const dx = slot.x - d.x;
-            const dy = slot.y - d.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > 1) {
-                d.x += (dx / dist) * speed;
-                d.y += (dy / dist) * speed;
+        if (this.phase === "ENGAGE") {
+            this.activeIndex = this.selectActiveInterceptor(target);
+            for (let i = 0; i < this.drones.length; i++) {
+                const d = this.drones[i];
+                if (i === this.activeIndex) {
+                    const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2);
+                    if (dist > this.strikeThreshold) {
+                        this.predictivePursuit(target, i);
+                    } else {
+                        this.directPursuit(target, i);
+                    }
+                } else {
+                    this.orbitFormation(target, i);
+                }
+                d.x = world.clampX(d.x);
+                d.y = world.clampY(d.y);
             }
-            d.x = world.clampX(d.x);
-            d.y = world.clampY(d.y);
+        } else {
+            const speed = 1;
+            for (let i = 0; i < this.drones.length; i++) {
+                const d = this.drones[i];
+                const slot = this.formationSlot(target, i);
+                const dx = slot.x - d.x;
+                const dy = slot.y - d.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 1) {
+                    d.x += (dx / dist) * speed;
+                    d.y += (dy / dist) * speed;
+                }
+                d.x = world.clampX(d.x);
+                d.y = world.clampY(d.y);
+            }
         }
     }
 
@@ -208,14 +322,22 @@ const swarm = new Swarm([d1,d2,d3,d4])
 const map = new World(20, 20);
 
 let iter = 1;
-const limit = 30;
+let gameOver = false;
 
-while(iter < limit){
-    console.log(`\n--- t = ${iter} | Phase: ${swarm.phase} ---`);
+while(!gameOver){
+    const active = swarm.phase === "ENGAGE" ? ` | Active: ${swarm.activeIndex}` : "";
+    console.log(`\n--- t = ${iter} | Phase: ${swarm.phase}${active} ---`);
     map.print(shahed, swarm)
     shahed.move(map);
     swarm.moveDrones(shahed, map);
     swarm.step(shahed, iter)
-    iter++;
+    gameOver = swarm.intercepted(shahed);
+    if (gameOver) {
+        console.log(`\n--- t = ${iter} | FINAL STRIKE ---`);
+        map.print(shahed, swarm)
+    }
+    if (!gameOver) iter++;
 }
+
+console.log(`\n*** TARGET INTERCEPTED by Drone ${swarm.eliminated} at t = ${iter} ***`);
 
