@@ -1,0 +1,299 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0a0a14;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* TOP BAR */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #0f0f1e, #1a1a30);
+  border-bottom: 1px solid #2a2a44;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 8px; }
+.logo { font-size: 20px; }
+.title { font-weight: 700; font-size: 14px; letter-spacing: 1px; color: #8ab4f8; }
+
+.topbar-center { display: flex; align-items: center; gap: 12px; }
+.phase-badge {
+  padding: 3px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+  background: #3498db;
+  color: #fff;
+  text-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+.phase-time { font-size: 13px; color: #aaa; }
+
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-right #simTime { font-weight: 600; color: #ccc; }
+.controls-hint { font-size: 11px; color: #666; }
+
+/* MAIN */
+#main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* LEFT PANEL */
+#panelLeft {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 12px;
+  background: #0d0d1a;
+  border-right: 1px solid #1e1e32;
+  overflow-y: auto;
+}
+#panelLeft h3 {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #666;
+  margin: 12px 0 8px;
+  text-transform: uppercase;
+}
+#panelLeft h3:first-child { margin-top: 0; }
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #141428;
+}
+.metric label { color: #888; font-size: 12px; }
+.metric .value { font-weight: 600; color: #ddd; }
+.metric .value.mono { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 11px; }
+.metric hr { border: none; border-top: 1px solid #1a1a30; margin: 8px 0; }
+
+.eliminated .value { color: #2ecc71; font-weight: 700; }
+
+/* VIEWPORT */
+#viewport {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+#three-container { width: 100%; height: 100%; }
+
+.phase-notification {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(255,255,255,0.3);
+  border: 2px solid #fff;
+  padding: 12px 32px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.4);
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+}
+.phase-notification.hidden { opacity: 0; }
+.phase-notification.show { opacity: 1; }
+
+/* RIGHT PANEL */
+#panelRight {
+  width: 340px;
+  flex-shrink: 0;
+  padding: 12px;
+  background: #0d0d1a;
+  border-left: 1px solid #1e1e32;
+  overflow-y: auto;
+}
+#panelRight h3 {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #666;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+#droneTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+#droneTable th {
+  text-align: left;
+  padding: 4px 6px;
+  color: #555;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  border-bottom: 1px solid #1e1e32;
+}
+#droneTable td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #12122a;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+}
+#droneTable tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+/* HUD — two-row footer */
+#hud {
+  flex-shrink: 0;
+  background: #0a0a14;
+  border-top: 1px solid #1e1e32;
+  padding: 6px 12px;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#controlsRow {
+  margin-bottom: 4px;
+}
+
+/* Transport buttons */
+.transport-buttons {
+  display: flex;
+  gap: 6px;
+  padding-right: 12px;
+  border-right: 1px solid #1e1e32;
+}
+.transport-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #2a2a44;
+  background: #12122a;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.transport-btn.play {
+  color: #2ecc71;
+  border-color: #2ecc71;
+}
+.transport-btn.play:hover {
+  background: rgba(46,204,113,0.15);
+  box-shadow: 0 0 10px rgba(46,204,113,0.3);
+}
+.transport-btn.play.paused {
+  color: #888;
+  border-color: #555;
+}
+.transport-btn.stop {
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+.transport-btn.stop:hover {
+  background: rgba(231,76,60,0.15);
+  box-shadow: 0 0 10px rgba(231,76,60,0.3);
+}
+
+/* Speed slider in HUD */
+#hud .speed-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 280px;
+  padding: 0;
+}
+#hud .speed-control input[type="range"] {
+  flex: 1;
+  height: 6px;
+  appearance: none;
+  background: #2a2a44;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  min-width: 80px;
+}
+#hud .speed-control input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #8ab4f8;
+  cursor: pointer;
+  border: 2px solid #0a0a14;
+  box-shadow: 0 0 6px rgba(138,180,248,0.4);
+}
+#hud .speed-control input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #8ab4f8;
+  cursor: pointer;
+  border: 2px solid #0a0a14;
+}
+.speed-value {
+  color: #8ab4f8;
+  font-weight: 700;
+  font-size: 13px;
+  min-width: 52px;
+  text-align: center;
+}
+
+/* Speed preset buttons in HUD */
+#hud .speed-buttons {
+  display: flex;
+  gap: 3px;
+  padding-left: 12px;
+  border-left: 1px solid #1e1e32;
+}
+#hud .speed-buttons button {
+  padding: 3px 8px;
+  border: 1px solid #2a2a44;
+  border-radius: 4px;
+  background: #12122a;
+  color: #8ab4f8;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1.4;
+}
+#hud .speed-buttons button:hover {
+  background: #1a1a3a;
+  border-color: #8ab4f8;
+}
+
+/* Telemetry row */
+.hud-item { display: flex; align-items: center; gap: 5px; }
+.hud-label { color: #555; font-weight: 600; text-transform: uppercase; font-size: 9px; letter-spacing: 1px; }
+.hud-value { color: #ccc; font-size: 11px; }
+.hud-value.mono { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 10px; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }

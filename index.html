@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shepherd Swarm Interceptor — Defense Dashboard</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- TOP BAR -->
+    <header id="topbar">
+      <div class="topbar-left">
+        <span class="logo">🛡️</span>
+        <span class="title">SHEPHERD SWARM INTERCEPTOR</span>
+      </div>
+      <div class="topbar-center">
+        <span class="phase-badge" id="phaseBadge">ASCEND</span>
+        <span class="phase-time" id="phaseTime">⏱ 0.0s</span>
+      </div>
+      <div class="topbar-right">
+        <span id="simTime">t = 0</span>
+        <span class="controls-hint">[Space/▶] pause · [■] reset · [0-9] speed</span>
+      </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div id="main">
+      <!-- LEFT PANEL: MISSION STATUS -->
+      <aside id="panelLeft">
+        <h3>📊 MISSION STATUS</h3>
+        <div class="metric">
+          <label>Avg Distance</label>
+          <span class="value" id="avgDist">—</span>
+        </div>
+        <div class="metric">
+          <label>Striker Distance</label>
+          <span class="value" id="strikerDist">—</span>
+        </div>
+        <div class="metric">
+          <label>Formation Readiness</label>
+          <span class="value" id="formReadiness">0/4</span>
+        </div>
+        <div class="metric">
+          <label>Ready Tolerance</label>
+          <span class="value" id="readyTol">2.0</span>
+        </div>
+        <hr />
+        <h3>🎯 TARGET</h3>
+        <div class="metric">
+          <label>Position</label>
+          <span class="value mono" id="targetPos">—</span>
+        </div>
+        <div class="metric">
+          <label>Velocity</label>
+          <span class="value mono" id="targetVel">—</span>
+        </div>
+        <div class="metric">
+          <label>Heading</label>
+          <span class="value" id="targetHeading">—</span>
+        </div>
+        <hr />
+        <div class="metric">
+          <label>Predicted @ τ=1.0</label>
+          <span class="value mono" id="predictedPos">—</span>
+        </div>
+        <hr />
+        <div class="metric eliminated" id="eliminatedRow" style="display:none">
+          <label>ELIMINATED</label>
+          <span class="value" id="eliminatedBy">—</span>
+        </div>
+      </aside>
+
+      <!-- CENTER: 3D VIEWPORT -->
+      <div id="viewport">
+        <div id="three-container"></div>
+        <div id="phaseNotify" class="phase-notification hidden"></div>
+      </div>
+
+      <!-- RIGHT PANEL: DRONE TABLE -->
+      <aside id="panelRight">
+        <h3>🚁 DRONES</h3>
+        <table id="droneTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Role</th>
+              <th>X</th>
+              <th>Y</th>
+              <th>Z</th>
+              <th>Dist</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="droneTableBody">
+            <tr><td colspan="7">—</td></tr>
+          </tbody>
+        </table>
+      </aside>
+    </div>
+
+    <!-- BOTTOM HUD -->
+    <footer id="hud">
+      <div class="hud-row" id="controlsRow">
+        <div class="transport-buttons">
+          <button id="playBtn" class="transport-btn play" title="Play/Pause (Space)">▶</button>
+          <button id="stopBtn" class="transport-btn stop" title="Stop & Reset (R)">■</button>
+        </div>
+        <div class="speed-control">
+          <input type="range" id="speedSlider" min="0.05" max="10" step="0.05" value="0.5" />
+          <span id="speedValue" class="speed-value">0.50×</span>
+        </div>
+        <div class="speed-buttons">
+          <button data-speed="0.1">¼×</button>
+          <button data-speed="0.5">½×</button>
+          <button data-speed="1">1×</button>
+          <button data-speed="2">2×</button>
+          <button data-speed="5">5×</button>
+          <button data-speed="10">10×</button>
+        </div>
+      </div>
+      <div class="hud-row" id="telemetryRow">
+        <div class="hud-item">
+          <span class="hud-label">Shahed</span>
+          <span class="hud-value mono" id="hudPos">(0.0, 0.0, 0.0)</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Vel</span>
+          <span class="hud-value mono" id="hudVel">(0.0, 0.0, 0.0)</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Pred</span>
+          <span class="hud-value mono" id="hudPred">(0.0, 0.0, 0.0)</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Steps/s</span>
+          <span class="hud-value" id="stepsPerSec">6.7</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Intercepts</span>
+          <span class="hud-value" id="hudIntercepts">0</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

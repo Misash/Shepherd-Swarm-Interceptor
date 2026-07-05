@@ -1,0 +1,15 @@
+export const COLORS = {
+  shahed: 0xe74c3c,
+  shahedGlow: 0xff6b6b,
+  drone: 0x3498db,
+  striker: 0xf1c40f,
+  strikerGlow: 0xffd700,
+  trail: 0x555555,
+  trailShahed: 0xff4444,
+  formationRing: 0x9b59b6,
+  formationSlot: 0x8e44ad,
+  prediction: 0xff7675,
+  ground: 0x1a1a2e,
+  grid: 0x2d2d44,
+  eliminated: 0x2ecc71,
+};
