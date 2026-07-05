@@ -1,11 +1,13 @@
 class World {
   readonly rows: number;
   readonly cols: number;
+  readonly height: number;
   private grid: string[][];
 
-  constructor(rows: number, cols: number, defaultValue: string = ".") {
+  constructor(rows: number, cols: number, height: number = 10, defaultValue: string = ".") {
     this.rows = rows;
     this.cols = cols;
+    this.height = height;
     this.grid = Array.from({ length: rows }, () =>
       Array(cols).fill(defaultValue)
     );
@@ -17,6 +19,10 @@ class World {
 
   clampY(y: number): number {
     return Math.max(0, Math.min(this.rows - 1, Math.round(y)));
+  }
+
+  clampZ(z: number): number {
+    return Math.max(0, Math.min(this.height - 1, z));
   }
 
   setCell(row: number, col: number, value: string): void {
@@ -48,6 +54,8 @@ class World {
       const rowStr = String(r).padStart(2, " ") + " " + overlay[r].map(c => c.padStart(2, " ")).join(" ");
       console.log(rowStr);
     }
+    const zLine = "Z  Shahed=" + target.z.toFixed(1) + " | " + swarm.drones.map((d,i) => "D" + i + "=" + d.z.toFixed(1)).join(" ");
+    console.log(zLine);
   }
 }
 
@@ -56,19 +64,24 @@ class World {
 class Shahed {
     x:number;
     y: number;
+    z: number;
     vx: number;
     vy: number;
+    vz: number;
 
-    constructor(x: number, y: number, vx: number = 1, vy: number = 0){
+    constructor(x: number, y: number, z: number = 5, vx: number = 1, vy: number = 0, vz: number = 0){
         this.x = x;
         this.y = y;
+        this.z = z;
         this.vx = vx;
         this.vy = vy;
+        this.vz = vz;
     }
 
     move(world: World): void {
         this.x += this.vx;
         this.y += this.vy;
+        this.z += this.vz;
         if (Math.round(this.x) >= world.cols || Math.round(this.x) < 0) {
             this.vx = -this.vx;
             this.x = world.clampX(this.x);
@@ -76,6 +89,10 @@ class Shahed {
         if (Math.round(this.y) >= world.rows || Math.round(this.y) < 0) {
             this.vy = -this.vy;
             this.y = world.clampY(this.y);
+        }
+        if (Math.round(this.z) >= world.height || Math.round(this.z) < 0) {
+            this.vz = -this.vz;
+            this.z = world.clampZ(this.z);
         }
     }
 
@@ -87,22 +104,28 @@ class Shahed {
 class Drone {
     x:number;
     y: number;
+    z: number;
 
-    constructor(x: number, y: number){
+    constructor(x: number, y: number, z: number = 0){
         this.x = x;
         this.y = y;
+        this.z = z;
     }
 }
 
 type Role = "STRIKER" | "SHEPHERD";
 
-type Phase = "CHASE" | "FOLLOW" | "FORM" | "ENGAGE";
+type Phase = "ASCEND" | "CHASE" | "FOLLOW" | "FORM" | "ENGAGE";
 class Swarm {
     drones: Drone[] = []
-    phase: Phase = "CHASE";
+    phase: Phase = "ASCEND";
     phaseStartTime = 0;
     activeIndex: number | null = null;
     eliminated: number | null = null;
+
+    // ascend parameters
+    ascendSpeed = 0.5;
+    zTolerance = 1.0;
 
     // phase transition parameters
     minChaseTime = 5.0;      // τ_chase
@@ -127,12 +150,18 @@ class Swarm {
 
     //  S(t+1) = f(S(t), Δt, d_avg(t), φ_formation(t))
     private updatePhase(
-        currentPhase: Phase, 
-        timeInPhase: number, 
-        avgDistance: number, 
-        formationQuality: number
+        currentPhase: Phase,
+        timeInPhase: number,
+        avgDistance: number,
+        formationQuality: number,
+        zReady: boolean = false
     ): Phase {
         switch(currentPhase){
+            case "ASCEND":
+                if (zReady) {
+                    return "CHASE";
+                }
+                return currentPhase;
             case "CHASE":
                 if (timeInPhase >= this.minChaseTime && avgDistance <= this.followThreshold) {
                     return "FOLLOW";
@@ -180,6 +209,10 @@ class Swarm {
             if (dist <= this.readyTolerance) ready++;
         });
         return ready;
+    }
+
+    private allDronesAtZ(target: Shahed): boolean {
+        return this.drones.every(d => Math.abs(d.z - target.z) <= this.zTolerance);
     }
 
     // eq 3.3: a*(t) = argmin ‖p_i - p_target‖
@@ -256,8 +289,9 @@ class Swarm {
         const avgDist = this.averageDistance(target);
         const formQuality = this.formationReadiness(target);
         const timeInPhase = currentTime - this.phaseStartTime;
+        const zReady = this.allDronesAtZ(target);
 
-        const newPhase = this.updatePhase(this.phase, timeInPhase, avgDist, formQuality);
+        const newPhase = this.updatePhase(this.phase, timeInPhase, avgDist, formQuality, zReady);
         if (newPhase !== this.phase) {
             this.phase = newPhase;
             this.phaseStartTime = currentTime;
@@ -268,7 +302,25 @@ class Swarm {
     }
 
     moveDrones(target: Shahed, world: World) {
-        if (this.phase === "ENGAGE") {
+        if (this.phase === "ASCEND") {
+            for (let i = 0; i < this.drones.length; i++) {
+                const d = this.drones[i];
+                if (Math.abs(d.z - target.z) > this.zTolerance) {
+                    d.z += d.z < target.z ? this.ascendSpeed : -this.ascendSpeed;
+                }
+                d.z = world.clampZ(d.z);
+                const slot = this.formationSlot(target, i);
+                const dx = slot.x - d.x;
+                const dy = slot.y - d.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 1) {
+                    d.x += (dx / dist) * 1;
+                    d.y += (dy / dist) * 1;
+                }
+                d.x = world.clampX(d.x);
+                d.y = world.clampY(d.y);
+            }
+        } else if (this.phase === "ENGAGE") {
             this.activeIndex = this.selectActiveInterceptor(target);
             for (let i = 0; i < this.drones.length; i++) {
                 const d = this.drones[i];
@@ -311,7 +363,7 @@ class Swarm {
 // main
 
 
-const shahed   = new Shahed(2, 2, 1, 0.5);
+const shahed   = new Shahed(2, 2, 5, 1, 0.5, 0);
 const d1:Drone = new Drone(1,7);
 const d2:Drone = new Drone(4,6);
 const d3:Drone = new Drone(2,5);
@@ -319,7 +371,7 @@ const d4:Drone = new Drone(8,8);
 
 const swarm = new Swarm([d1,d2,d3,d4])
 
-const map = new World(20, 20);
+const map = new World(20, 20, 10);
 
 let iter = 1;
 let gameOver = false;
