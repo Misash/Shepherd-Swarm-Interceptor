@@ -1,4 +1,4 @@
-class Map2D {
+class World {
   private grid: string[][];
 
   constructor(rows: number, cols: number, defaultValue: string = ".") {
@@ -22,20 +22,72 @@ class Map2D {
     return this.grid[row][col];
   }
 
-  print(): void {
+  print(target: Drone, drones: Drone[]): void {
+    const overlay = this.grid.map(row => [...row]);
+    overlay[target.y][target.x] = "X";
+    for (const d of drones) {
+      overlay[d.y][d.x] = "O";
+    }
     const header = "   " + this.grid[0].map((_, i) => String(i).padStart(2, " ")).join(" ");
     console.log(header);
-    for (let r = 0; r < this.grid.length; r++) {
-      const rowStr = String(r).padStart(2, " ") + " " + this.grid[r].map(c => c.padStart(2, " ")).join(" ");
+    for (let r = 0; r < overlay.length; r++) {
+      const rowStr = String(r).padStart(2, " ") + " " + overlay[r].map(c => c.padStart(2, " ")).join(" ");
       console.log(rowStr);
     }
   }
 }
 
 
-const map = new Map2D(10, 10);
+class Drone {
+    x:number;
+    y: number;
 
-map.setCell(0, 0, "S"); // Start
-map.setCell(4, 7, "G"); // Goal
+    constructor(x: number, y: number){
+        this.x = x;
+        this.y = y;
+    }
+} 
 
-map.print();
+
+class Swarm {
+    drones: Drone[] = []
+
+    constructor(drones: Drone[]){
+        this.drones = drones;
+    }
+
+    moveDrones() {
+        for (let i=0; i < this.drones.length; i++){
+            this.drones[i].x +=1;
+        }
+    }
+}
+
+
+
+// main
+
+
+const shahed  = new Drone(5,5);
+const d1:Drone = new Drone(1,7);
+const d2:Drone = new Drone(4,6);
+const d3:Drone = new Drone(2,5);
+const d4:Drone = new Drone(8,8);
+
+const swarm = new Swarm([d1,d2,d3,d4])
+
+const map = new World(10, 10);
+
+
+
+let iter = 1;
+const limit = 5;
+
+while(iter < limit){
+
+    map.print(shahed,swarm.drones)    
+    swarm.moveDrones()
+
+    iter++;
+}
+
