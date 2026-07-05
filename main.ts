@@ -1,10 +1,22 @@
 class World {
+  readonly rows: number;
+  readonly cols: number;
   private grid: string[][];
 
   constructor(rows: number, cols: number, defaultValue: string = ".") {
+    this.rows = rows;
+    this.cols = cols;
     this.grid = Array.from({ length: rows }, () =>
       Array(cols).fill(defaultValue)
     );
+  }
+
+  clampX(x: number): number {
+    return Math.max(0, Math.min(this.cols - 1, Math.round(x)));
+  }
+
+  clampY(y: number): number {
+    return Math.max(0, Math.min(this.rows - 1, Math.round(y)));
   }
 
   setCell(row: number, col: number, value: string): void {
@@ -24,9 +36,9 @@ class World {
 
   print(target: Shahed, swarm: Swarm): void {
     const overlay = this.grid.map(row => [...row]);
-    overlay[target.y][target.x] = "X";
+    overlay[this.clampY(target.y)][this.clampX(target.x)] = "X";
     for (const d of swarm.drones) {
-      overlay[d.y][d.x] = "O";
+      overlay[this.clampY(d.y)][this.clampX(d.x)] = "O";
     }
     const header = "   " + this.grid[0].map((_, i) => String(i).padStart(2, " ")).join(" ");
     console.log(header);
@@ -42,10 +54,25 @@ class World {
 class Shahed {
     x:number;
     y: number;
+    vx: number;
+    vy: number;
 
-    constructor(x: number, y: number){
+    constructor(x: number, y: number, vx: number = 1, vy: number = 0){
         this.x = x;
         this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+    }
+
+    move(world: World): void {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.x = world.clampX(this.x);
+        this.y = world.clampY(this.y);
+    }
+
+    heading(): number {
+        return Math.atan2(this.vy, this.vx);
     }
 }
 
@@ -114,13 +141,20 @@ class Swarm {
         return total / this.drones.length;
     }
 
-     private formationReadiness(target: Shahed): number {
+    private formationSlot(target: Shahed, i: number): { x: number, y: number } {
+        const heading = target.heading();
+        const angle = heading + (i * Math.PI) / 2;
+        return {
+            x: target.x + this.formationRadius * Math.cos(angle),
+            y: target.y + this.formationRadius * Math.sin(angle),
+        };
+    }
+
+    private formationReadiness(target: Shahed): number {
         let ready = 0;
         this.drones.forEach((d, i) => {
-            const angle = (i * Math.PI) / 2;
-            const slotX = target.x + this.formationRadius * Math.cos(angle);
-            const slotY = target.y + this.formationRadius * Math.sin(angle);
-            const dist = Math.sqrt((d.x - slotX) ** 2 + (d.y - slotY) ** 2);
+            const slot = this.formationSlot(target, i);
+            const dist = Math.sqrt((d.x - slot.x) ** 2 + (d.y - slot.y) ** 2);
             if (dist <= this.readyTolerance) ready++;
         });
         return ready;
@@ -138,9 +172,20 @@ class Swarm {
         }
     }
 
-    moveDrones() {
-        for (let i=0; i < this.drones.length; i++){
-            this.drones[i].x +=1;
+    moveDrones(target: Shahed, world: World) {
+        const speed = 1;
+        for (let i = 0; i < this.drones.length; i++) {
+            const d = this.drones[i];
+            const slot = this.formationSlot(target, i);
+            const dx = slot.x - d.x;
+            const dy = slot.y - d.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 1) {
+                d.x += (dx / dist) * speed;
+                d.y += (dy / dist) * speed;
+            }
+            d.x = world.clampX(d.x);
+            d.y = world.clampY(d.y);
         }
     }
 
@@ -152,7 +197,7 @@ class Swarm {
 // main
 
 
-const shahed   = new Shahed(5,5);
+const shahed   = new Shahed(2, 2, 1, 0.5);
 const d1:Drone = new Drone(1,7);
 const d2:Drone = new Drone(4,6);
 const d3:Drone = new Drone(2,5);
@@ -160,19 +205,17 @@ const d4:Drone = new Drone(8,8);
 
 const swarm = new Swarm([d1,d2,d3,d4])
 
-const map = new World(10, 10);
-
-
+const map = new World(20, 20);
 
 let iter = 1;
-const limit = 15;
+const limit = 30;
 
 while(iter < limit){
-
     console.log(`\n--- t = ${iter} | Phase: ${swarm.phase} ---`);
     map.print(shahed, swarm)
+    shahed.move(map);
+    swarm.moveDrones(shahed, map);
     swarm.step(shahed, iter)
     iter++;
-    
 }
 
