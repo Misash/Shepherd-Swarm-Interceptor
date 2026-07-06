@@ -14,7 +14,7 @@
 
 ## Algorithm Overview
 
-4 interceptor drones pursue a maneuvering target through 5 phases:
+4 interceptor drones pursue a maneuvering target through 4 phases:
 
 ```
  CHASE → FOLLOW → FORM → ENGAGE
