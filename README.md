@@ -2,6 +2,10 @@
 
 > Interactive 3D simulation of the **Shepherd Grid Strategy** — a multi-phase, pack-based algorithm for drone swarm interception.
 
+<p align="center">
+  <img src="asset/shepherd-swarm.gif" alt="Shepherd Grid Strategy demo" width="800">
+</p>
+
 [![Paper](https://img.shields.io/badge/Paper-arXiv:2508.09536-blue)](https://arxiv.org/html/2508.09536v1)
 
 **Authors:** Kriuk Boris (HKUST), Kriuk Fedor (UTS)
