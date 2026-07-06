@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Shahed } from "../sim/Shahed";
 import { Swarm } from "../sim/Swarm";
-import { COLORS } from "./Colors";
+import { COLORS, PHASE_COLORS_HEX } from "./Colors";
 
 function makeTrail(maxLen: number, color: number): THREE.Line {
   const pos = new Float32Array(maxLen * 3);
@@ -39,7 +39,9 @@ export class Entities3D {
   private droneGlows: (THREE.Mesh | null)[] = [];
   private droneTrails: THREE.Line[] = [];
 
-  private ringGroup: THREE.Group;
+  private formationGroup: THREE.Group;
+  private formationCircle: THREE.Line;
+  private formationSquare: THREE.Line;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -111,6 +113,40 @@ export class Entities3D {
 
     scene.add(this.shahedGroup);
 
+    this.formationGroup = new THREE.Group();
+    this.formationGroup.visible = false;
+    const formRadius = 5;
+    const CIRCLE_SEGMENTS = 48;
+    const circlePts: THREE.Vector3[] = [];
+    for (let i = 0; i <= CIRCLE_SEGMENTS; i++) {
+      const theta = (i / CIRCLE_SEGMENTS) * Math.PI * 2;
+      circlePts.push(new THREE.Vector3(
+        formRadius * Math.cos(theta), 0, formRadius * Math.sin(theta)
+      ));
+    }
+    const circleGeo = new THREE.BufferGeometry().setFromPoints(circlePts);
+    this.formationCircle = new THREE.Line(
+      circleGeo,
+      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 })
+    );
+    this.formationGroup.add(this.formationCircle);
+
+    const sqPts: THREE.Vector3[] = [];
+    for (let i = 0; i < 4; i++) {
+      const angle = (i * Math.PI) / 2;
+      sqPts.push(new THREE.Vector3(
+        formRadius * Math.cos(angle), 0.05, formRadius * Math.sin(angle)
+      ));
+    }
+    sqPts.push(sqPts[0].clone());
+    const sqGeo = new THREE.BufferGeometry().setFromPoints(sqPts);
+    this.formationSquare = new THREE.Line(
+      sqGeo,
+      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 })
+    );
+    this.formationGroup.add(this.formationSquare);
+    scene.add(this.formationGroup);
+
     this.shahedTrail = makeTrail(30, COLORS.trailShahed);
     scene.add(this.shahedTrail);
 
@@ -129,8 +165,6 @@ export class Entities3D {
     );
     scene.add(this.predMarker);
 
-    this.ringGroup = new THREE.Group();
-    scene.add(this.ringGroup);
   }
 
   initDrones(count: number): void {
@@ -177,37 +211,6 @@ export class Entities3D {
     group.add(this.droneModelTemplate!.clone(true));
   }
 
-  private updateFormationRings(shahed: Shahed): void {
-    while (this.ringGroup.children.length) {
-      const c = this.ringGroup.children[0];
-      this.ringGroup.remove(c);
-      if ("geometry" in c && "material" in c) {
-        (c as THREE.Mesh).geometry.dispose();
-        ((c as THREE.Mesh).material as THREE.Material).dispose();
-      }
-    }
-
-    const heading = shahed.heading();
-    const radius = 5;
-    const cx = shahed.x;
-    const cz = -shahed.y;
-    const cy = shahed.z;
-
-    for (let i = 0; i < 4; i++) {
-      const angle = heading + (i * Math.PI) / 2;
-      const sx = cx + radius * Math.cos(angle);
-      const sz = cz + radius * Math.sin(angle);
-
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.25, 0.35, 16),
-        new THREE.MeshBasicMaterial({ color: COLORS.formationSlot, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
-      );
-      ring.position.set(sx, cy + 0.05, sz);
-      ring.lookAt(sx, cy + 1, sz);
-      this.ringGroup.add(ring);
-    }
-  }
-
   update(shahed: Shahed, swarm: Swarm): void {
     const sx = shahed.x;
     const sy = shahed.z;
@@ -249,9 +252,32 @@ export class Entities3D {
       if (i < this.droneTrails.length) {
         updateTrail(this.droneTrails[i], d.trail);
       }
+
+      const phaseColor = PHASE_COLORS_HEX[swarm.phase];
+      this.droneGroups[i].traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          const mat = child.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(phaseColor);
+        }
+      });
     }
 
-    this.updateFormationRings(shahed);
+    const inForm = swarm.phase === "FORM";
+    this.formationGroup.visible = inForm;
+    if (inForm) {
+      let cx = 0, cy = 0, cz = 0;
+      for (const d of swarm.drones) {
+        cx += d.x; cy += d.z; cz += -d.y;
+      }
+      cx /= swarm.drones.length;
+      cy /= swarm.drones.length;
+      cz /= swarm.drones.length;
+      this.formationGroup.position.set(cx, cy, cz);
+      this.formationGroup.rotation.set(0, heading, 0);
+      const phaseColor = PHASE_COLORS_HEX[swarm.phase];
+      (this.formationCircle.material as THREE.LineBasicMaterial).color.setHex(phaseColor);
+      (this.formationSquare.material as THREE.LineBasicMaterial).color.setHex(phaseColor);
+    }
 
     if (swarm.eliminated !== null && swarm.eliminated < this.droneGroups.length) {
       this.droneGroups[swarm.eliminated].traverse((child) => {

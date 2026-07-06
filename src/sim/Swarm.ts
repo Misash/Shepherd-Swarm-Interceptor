@@ -19,11 +19,11 @@ export class Swarm {
 
   formationRadius = 5;
   readyTolerance = 2;
-  orbitSpeed = 0.4;
+  orbitSpeed = 1.2;
 
   strikeThreshold = 4;
   tauHorizon = 1.0;
-  strikeMultiplier = 1.5;
+  strikeMultiplier = 2.5;
   interceptRadius = 1.0;
 
   constructor(drones: Drone[]) {
@@ -137,6 +137,9 @@ export class Swarm {
 
   private orbitFormation(target: Shahed, i: number): void {
     const d = this.drones[i];
+    // Compensar velocidad del target para mantener formación en movimiento
+    d.x += target.vx;
+    d.y += target.vy;
     const slot = this.formationSlot(target, i);
     const dx = slot.x - d.x;
     const dy = slot.y - d.y;
@@ -180,8 +183,8 @@ export class Swarm {
         const dy = slot.y - d.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 1) {
-          d.x += (dx / dist) * 1;
-          d.y += (dy / dist) * 1;
+          d.x += (dx / dist) * 1.5;
+          d.y += (dy / dist) * 1.5;
         }
         d.x = world.clampX(d.x);
         d.y = world.clampY(d.y);
@@ -205,7 +208,7 @@ export class Swarm {
         d.y = world.clampY(d.y);
       }
     } else {
-      const speed = 1;
+      const speed = 1.5;
       for (let i = 0; i < this.drones.length; i++) {
         const d = this.drones[i];
         d.saveTrail();
