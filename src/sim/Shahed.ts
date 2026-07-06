@@ -9,6 +9,9 @@ export class Shahed {
   vz: number;
   trail: { x: number; y: number; z: number }[] = [];
   maxTrail = 30;
+  stepsSinceTurn = 0;
+  turnInterval = 8;
+  speedMag = 1.2;
 
   constructor(x: number, y: number, z: number = 7, vx: number = 1, vy: number = 0, vz: number = 0) {
     this.x = x;
@@ -22,6 +25,15 @@ export class Shahed {
   move(world: World): void {
     this.trail.push({ x: this.x, y: this.y, z: this.z });
     if (this.trail.length > this.maxTrail) this.trail.shift();
+
+    this.stepsSinceTurn++;
+    if (this.stepsSinceTurn >= this.turnInterval) {
+      this.stepsSinceTurn = 0;
+      const delta = Math.random() * 1.2 - 0.6;
+      const heading = this.heading() + delta;
+      this.vx = this.speedMag * Math.cos(heading);
+      this.vy = this.speedMag * Math.sin(heading);
+    }
 
     this.x += this.vx;
     this.y += this.vy;
