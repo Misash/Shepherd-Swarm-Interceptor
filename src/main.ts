@@ -44,14 +44,15 @@ function stepSimulation(): void {
 document.addEventListener("keydown", (e) => {
   if (e.key === " ") {
     e.preventDefault();
-    paused = !paused;
+    if (gameOver) { resetSimulation(); paused = false; }
+    else paused = !paused;
   }
   const n = parseFloat(e.key);
   if (!isNaN(n) && n >= 0 && n <= 9) {
     const slider = document.getElementById("speedSlider") as HTMLInputElement;
     slider.value = String(n <= 0 ? 0.1 : n);
   }
-  if (e.key === "r" || e.key === "R") resetSimulation();
+  if (e.key === "r" || e.key === "R") { resetSimulation(); paused = true; }
 });
 
 // ─── Speed preset buttons ───
@@ -64,7 +65,8 @@ document.querySelectorAll("[data-speed]").forEach((btn) => {
 
 // ─── Play/Pause button ───
 document.getElementById("playBtn")!.addEventListener("click", () => {
-  paused = !paused;
+  if (gameOver) { resetSimulation(); paused = false; }
+  else paused = !paused;
 });
 
 // ─── Stop button ───

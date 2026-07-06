@@ -67,7 +67,7 @@ export class Scene3D {
     this.scene.add(grid);
 
     const axes = new THREE.AxesHelper(5);
-    axes.position.set(0, 0, 0);
+    axes.position.set(cx, 0, cz);
     this.scene.add(axes);
 
     const geo = new THREE.PlaneGeometry(30, 30);

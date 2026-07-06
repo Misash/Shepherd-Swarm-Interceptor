@@ -42,6 +42,7 @@ export class Entities3D {
   private formationGroup: THREE.Group;
   private formationCircle: THREE.Line;
   private formationSquare: THREE.Line;
+  private slotGhosts: THREE.Mesh[] = [];
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -121,7 +122,7 @@ export class Entities3D {
     for (let i = 0; i <= CIRCLE_SEGMENTS; i++) {
       const theta = (i / CIRCLE_SEGMENTS) * Math.PI * 2;
       circlePts.push(new THREE.Vector3(
-        formRadius * Math.cos(theta), 0, formRadius * Math.sin(theta)
+        formRadius * Math.cos(theta), formRadius * Math.sin(theta), 0
       ));
     }
     const circleGeo = new THREE.BufferGeometry().setFromPoints(circlePts);
@@ -135,7 +136,7 @@ export class Entities3D {
     for (let i = 0; i < 4; i++) {
       const angle = (i * Math.PI) / 2;
       sqPts.push(new THREE.Vector3(
-        formRadius * Math.cos(angle), 0.05, formRadius * Math.sin(angle)
+        formRadius * Math.cos(angle), formRadius * Math.sin(angle), 0.05
       ));
     }
     sqPts.push(sqPts[0].clone());
@@ -146,6 +147,20 @@ export class Entities3D {
     );
     this.formationGroup.add(this.formationSquare);
     scene.add(this.formationGroup);
+
+    const slotGhostMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+    const verticalOffset = formRadius * 0.6;
+    for (let i = 0; i < 4; i++) {
+      const angle = (i * Math.PI) / 2;
+      const ghost = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.35, 12), slotGhostMat);
+      const lx = formRadius * Math.cos(angle);
+      const lz = formRadius * Math.sin(angle);
+      const ly = (i % 2 === 0 ? 1 : -1) * verticalOffset;
+      ghost.position.set(lx, ly, lz);
+      ghost.rotation.y = Math.atan2(lz, lx) - Math.PI / 2;
+      this.shahedGroup.add(ghost);
+      this.slotGhosts.push(ghost);
+    }
 
     this.shahedTrail = makeTrail(30, COLORS.trailShahed);
     scene.add(this.shahedTrail);
@@ -258,8 +273,14 @@ export class Entities3D {
         if (child instanceof THREE.Mesh) {
           const mat = child.material as THREE.MeshStandardMaterial;
           mat.color.setHex(phaseColor);
+          mat.emissive.setHex(0x000000);
+          mat.emissiveIntensity = 0;
         }
       });
+    }
+
+    for (const ghost of this.slotGhosts) {
+      (ghost.material as THREE.MeshBasicMaterial).color.setHex(PHASE_COLORS_HEX[swarm.phase]);
     }
 
     const inForm = swarm.phase === "FORM";

@@ -59,17 +59,20 @@ export class Swarm {
     const total = this.drones.reduce((sum, d) => {
       const dx = d.x - target.x;
       const dy = d.y - target.y;
-      return sum + Math.sqrt(dx * dx + dy * dy);
+      const dz = d.z - target.z;
+      return sum + Math.sqrt(dx * dx + dy * dy + dz * dz);
     }, 0);
     return this.drones.length > 0 ? total / this.drones.length : 0;
   }
 
-  private formationSlot(target: Shahed, i: number): { x: number; y: number } {
+  private formationSlot(target: Shahed, i: number): { x: number; y: number; z: number } {
     const heading = target.heading();
     const angle = heading + (i * Math.PI) / 2;
+    const vz = (i % 2 === 0 ? 1 : -1) * this.formationRadius * 0.6;
     return {
       x: target.x + this.formationRadius * Math.cos(angle),
       y: target.y + this.formationRadius * Math.sin(angle),
+      z: target.z + vz,
     };
   }
 
@@ -77,7 +80,7 @@ export class Swarm {
     let ready = 0;
     this.drones.forEach((d, i) => {
       const slot = this.formationSlot(target, i);
-      const dist = Math.sqrt((d.x - slot.x) ** 2 + (d.y - slot.y) ** 2);
+      const dist = Math.sqrt((d.x - slot.x) ** 2 + (d.y - slot.y) ** 2 + (d.z - slot.z) ** 2);
       if (dist <= this.readyTolerance) ready++;
     });
     return ready;
@@ -91,7 +94,7 @@ export class Swarm {
     let best = 0;
     let bestDist = Infinity;
     this.drones.forEach((d, i) => {
-      const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2);
+      const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2 + (d.z - target.z) ** 2);
       if (dist < bestDist) {
         bestDist = dist;
         best = i;
@@ -103,7 +106,7 @@ export class Swarm {
   intercepted(target: Shahed): boolean {
     if (this.phase !== "ENGAGE" || this.activeIndex === null) return false;
     const d = this.drones[this.activeIndex];
-    const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2);
+    const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2 + (d.z - target.z) ** 2);
     if (dist <= this.interceptRadius) {
       this.eliminated = this.activeIndex;
       return true;
@@ -115,12 +118,15 @@ export class Swarm {
     const d = this.drones[i];
     const futureX = target.x + target.vx * this.tauHorizon;
     const futureY = target.y + target.vy * this.tauHorizon;
+    const futureZ = target.z + target.vz * this.tauHorizon;
     const dx = futureX - d.x;
     const dy = futureY - d.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dz = futureZ - d.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (dist > 0.5) {
       d.x += (dx / dist) * this.strikeMultiplier;
       d.y += (dy / dist) * this.strikeMultiplier;
+      d.z += (dz / dist) * this.strikeMultiplier;
     }
   }
 
@@ -128,25 +134,29 @@ export class Swarm {
     const d = this.drones[i];
     const dx = target.x - d.x;
     const dy = target.y - d.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dz = target.z - d.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (dist > 0.5) {
       d.x += (dx / dist) * this.strikeMultiplier;
       d.y += (dy / dist) * this.strikeMultiplier;
+      d.z += (dz / dist) * this.strikeMultiplier;
     }
   }
 
   private orbitFormation(target: Shahed, i: number): void {
     const d = this.drones[i];
-    // Compensar velocidad del target para mantener formación en movimiento
     d.x += target.vx;
     d.y += target.vy;
+    d.z += target.vz;
     const slot = this.formationSlot(target, i);
     const dx = slot.x - d.x;
     const dy = slot.y - d.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dz = slot.z - d.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (dist > 0.5) {
       d.x += (dx / dist) * this.orbitSpeed * 0.6;
       d.y += (dy / dist) * this.orbitSpeed * 0.6;
+      d.z += (dz / dist) * this.orbitSpeed * 0.6;
       const theta = target.heading() + (i * Math.PI) / 2;
       d.x += -Math.sin(theta) * this.orbitSpeed * 0.4;
       d.y += Math.cos(theta) * this.orbitSpeed * 0.4;
@@ -195,7 +205,7 @@ export class Swarm {
         const d = this.drones[i];
         d.saveTrail();
         if (i === this.activeIndex) {
-          const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2);
+          const dist = Math.sqrt((d.x - target.x) ** 2 + (d.y - target.y) ** 2 + (d.z - target.z) ** 2);
           if (dist > this.strikeThreshold) {
             this.predictivePursuit(target, i);
           } else {
@@ -204,6 +214,7 @@ export class Swarm {
         } else {
           this.orbitFormation(target, i);
         }
+        d.z = world.clampZ(d.z);
         d.x = world.clampX(d.x);
         d.y = world.clampY(d.y);
       }
@@ -215,11 +226,14 @@ export class Swarm {
         const slot = this.formationSlot(target, i);
         const dx = slot.x - d.x;
         const dy = slot.y - d.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dz = slot.z - d.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (dist > 1) {
           d.x += (dx / dist) * speed;
           d.y += (dy / dist) * speed;
+          d.z += (dz / dist) * speed;
         }
+        d.z = world.clampZ(d.z);
         d.x = world.clampX(d.x);
         d.y = world.clampY(d.y);
       }
