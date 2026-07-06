@@ -3,7 +3,7 @@ export class World {
   readonly cols: number;
   readonly height: number;
 
-  constructor(rows: number, cols: number, height: number = 10) {
+  constructor(rows: number, cols: number, height: number = 15) {
     this.rows = rows;
     this.cols = cols;
     this.height = height;

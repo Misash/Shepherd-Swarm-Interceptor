@@ -10,7 +10,7 @@ export class Shahed {
   trail: { x: number; y: number; z: number }[] = [];
   maxTrail = 30;
 
-  constructor(x: number, y: number, z: number = 5, vx: number = 1, vy: number = 0, vz: number = 0) {
+  constructor(x: number, y: number, z: number = 7, vx: number = 1, vy: number = 0, vz: number = 0) {
     this.x = x;
     this.y = y;
     this.z = z;

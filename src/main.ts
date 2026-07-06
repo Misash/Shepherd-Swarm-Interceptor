@@ -7,8 +7,8 @@ import { Entities3D } from "./render/Entities3D";
 import { Dashboard } from "./ui/Dashboard";
 
 // ─── Simulation ───
-const world = new World(20, 20, 10);
-const shahed = new Shahed(2, 2, 5, 1, 0.5, 0);
+const world = new World(30, 30, 15);
+const shahed = new Shahed(2, 2, 7, 1, 0.5, 0);
 const drones = [new Drone(1, 7), new Drone(4, 6), new Drone(2, 5), new Drone(8, 8)];
 const swarm = new Swarm(drones);
 
@@ -76,7 +76,7 @@ document.getElementById("stopBtn")!.addEventListener("click", () => {
 });
 
 function resetSimulation(): void {
-  Object.assign(shahed, new Shahed(2, 2, 5, 1, 0.5, 0));
+  Object.assign(shahed, new Shahed(2, 2, 7, 1, 0.5, 0));
   swarm.drones = [new Drone(1, 7), new Drone(4, 6), new Drone(2, 5), new Drone(8, 8)];
   swarm.phase = "ASCEND";
   swarm.phaseStartTime = 0;

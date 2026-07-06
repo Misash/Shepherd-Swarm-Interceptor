@@ -122,7 +122,7 @@ export class Entities3D {
     for (let i = 0; i <= CIRCLE_SEGMENTS; i++) {
       const theta = (i / CIRCLE_SEGMENTS) * Math.PI * 2;
       circlePts.push(new THREE.Vector3(
-        formRadius * Math.cos(theta), formRadius * Math.sin(theta), 0
+        0, formRadius * Math.sin(theta), formRadius * Math.cos(theta)
       ));
     }
     const circleGeo = new THREE.BufferGeometry().setFromPoints(circlePts);
@@ -136,7 +136,7 @@ export class Entities3D {
     for (let i = 0; i < 4; i++) {
       const angle = (i * Math.PI) / 2;
       sqPts.push(new THREE.Vector3(
-        formRadius * Math.cos(angle), formRadius * Math.sin(angle), 0.05
+        0, formRadius * Math.sin(angle), formRadius * Math.cos(angle)
       ));
     }
     sqPts.push(sqPts[0].clone());
@@ -149,15 +149,17 @@ export class Entities3D {
     scene.add(this.formationGroup);
 
     const slotGhostMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
-    const verticalOffset = formRadius * 0.6;
-    for (let i = 0; i < 4; i++) {
-      const angle = (i * Math.PI) / 2;
+    const R = formRadius;
+    const ghostPositions = [
+      { pos: [0, 0, -R], rot: [0, Math.PI, 0] },
+      { pos: [0, R, 0], rot: [-Math.PI / 2, 0, 0] },
+      { pos: [0, 0, R], rot: [0, 0, 0] },
+      { pos: [0, -R, 0], rot: [Math.PI / 2, 0, 0] },
+    ];
+    for (const gp of ghostPositions) {
       const ghost = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.35, 12), slotGhostMat);
-      const lx = formRadius * Math.cos(angle);
-      const lz = formRadius * Math.sin(angle);
-      const ly = (i % 2 === 0 ? 1 : -1) * verticalOffset;
-      ghost.position.set(lx, ly, lz);
-      ghost.rotation.y = Math.atan2(lz, lx) - Math.PI / 2;
+      ghost.position.set(gp.pos[0], gp.pos[1], gp.pos[2]);
+      ghost.rotation.set(gp.rot[0], gp.rot[1], gp.rot[2]);
       this.shahedGroup.add(ghost);
       this.slotGhosts.push(ghost);
     }

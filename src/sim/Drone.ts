@@ -5,7 +5,7 @@ export class Drone {
   trail: { x: number; y: number; z: number }[] = [];
   maxTrail = 20;
 
-  constructor(x: number, y: number, z: number = 0) {
+  constructor(x: number, y: number, z: number = 3) {
     this.x = x;
     this.y = y;
     this.z = z;

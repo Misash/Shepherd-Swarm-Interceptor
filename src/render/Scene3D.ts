@@ -9,8 +9,8 @@ export class Scene3D {
   controls: OrbitControls;
   container: HTMLElement;
 
-  static readonly CENTER_X = 10;
-  static readonly CENTER_Z = -10;
+  static readonly CENTER_X = 15;
+  static readonly CENTER_Z = -15;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -62,7 +62,7 @@ export class Scene3D {
     const cx = Scene3D.CENTER_X;
     const cz = Scene3D.CENTER_Z;
 
-    const grid = new THREE.GridHelper(30, 30, COLORS.grid, COLORS.grid);
+    const grid = new THREE.GridHelper(40, 40, COLORS.grid, COLORS.grid);
     grid.position.set(cx, 0, cz);
     this.scene.add(grid);
 
@@ -70,7 +70,7 @@ export class Scene3D {
     axes.position.set(cx, 0, cz);
     this.scene.add(axes);
 
-    const geo = new THREE.PlaneGeometry(30, 30);
+    const geo = new THREE.PlaneGeometry(40, 40);
     const mat = new THREE.MeshStandardMaterial({
       color: COLORS.ground,
       transparent: true,

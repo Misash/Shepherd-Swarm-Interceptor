@@ -18,7 +18,7 @@ export class Swarm {
   formThreshold = 6;
 
   formationRadius = 5;
-  readyTolerance = 2;
+  readyTolerance = 3;
   orbitSpeed = 1.2;
 
   strikeThreshold = 4;
@@ -67,12 +67,13 @@ export class Swarm {
 
   private formationSlot(target: Shahed, i: number): { x: number; y: number; z: number } {
     const heading = target.heading();
-    const angle = heading + (i * Math.PI) / 2;
-    const vz = (i % 2 === 0 ? 1 : -1) * this.formationRadius * 0.6;
+    const phi = (i * Math.PI) / 2;
+    const perpX = -Math.sin(heading);
+    const perpY = Math.cos(heading);
     return {
-      x: target.x + this.formationRadius * Math.cos(angle),
-      y: target.y + this.formationRadius * Math.sin(angle),
-      z: target.z + vz,
+      x: target.x + this.formationRadius * Math.cos(phi) * perpX,
+      y: target.y + this.formationRadius * Math.cos(phi) * perpY,
+      z: target.z + this.formationRadius * Math.sin(phi),
     };
   }
 
@@ -219,7 +220,7 @@ export class Swarm {
         d.y = world.clampY(d.y);
       }
     } else {
-      const speed = 1.5;
+      const speed = 2.5;
       for (let i = 0; i < this.drones.length; i++) {
         const d = this.drones[i];
         d.saveTrail();
