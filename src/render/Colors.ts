@@ -1,7 +1,7 @@
 export const COLORS = {
   shahed: 0xe74c3c,
   shahedGlow: 0xff6b6b,
-  drone: 0x3498db,
+  drone: 0xf1c40f,
   striker: 0xf1c40f,
   strikerGlow: 0xffd700,
   trail: 0x555555,

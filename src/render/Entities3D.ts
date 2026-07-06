@@ -34,7 +34,8 @@ export class Entities3D {
   private predLine: THREE.Line;
   private predMarker: THREE.Mesh;
 
-  private droneMeshes: THREE.Mesh[] = [];
+  private droneGroups: THREE.Group[] = [];
+  private droneModelTemplate: THREE.Group | null = null;
   private droneGlows: (THREE.Mesh | null)[] = [];
   private droneTrails: THREE.Line[] = [];
 
@@ -74,13 +75,38 @@ export class Entities3D {
 
       model.scale.set(1.2, 1.2, 1.2);
       model.rotation.y = Math.PI / 2;
+      model.position.y = -2.3;
       model.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
+          const mat = child.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(0xffffff);
+          mat.emissive?.setHex(0x000000);
+          mat.emissiveIntensity = 0;
         }
       });
 
       this.shahedGroup.add(model);
+    });
+
+    const droneLoader = new GLTFLoader();
+    droneLoader.load("/drone.glb", (gltf) => {
+      const model = gltf.scene;
+      model.scale.set(5, 10, 10);
+      model.rotation.y = Math.PI / 2;
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          const mat = child.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(COLORS.drone);
+        }
+      });
+      this.droneModelTemplate = model;
+
+      for (const group of this.droneGroups) {
+        this.replaceGroupPlaceholder(group);
+      }
     });
 
     scene.add(this.shahedGroup);
@@ -109,19 +135,23 @@ export class Entities3D {
 
   initDrones(count: number): void {
     for (let i = 0; i < count; i++) {
-      const isStriker = i === 0;
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(isStriker ? 0.4 : 0.3, 12, 12),
-        new THREE.MeshStandardMaterial({
-          color: isStriker ? COLORS.striker : COLORS.drone,
-          emissive: isStriker ? COLORS.strikerGlow : 0x000000,
-          emissiveIntensity: isStriker ? 0.2 : 0,
-        })
-      );
-      mesh.castShadow = true;
-      this.scene.add(mesh);
-      this.droneMeshes.push(mesh);
+      const group = new THREE.Group();
 
+      if (this.droneModelTemplate) {
+        group.add(this.droneModelTemplate.clone(true));
+      } else {
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.3, 12, 12),
+          new THREE.MeshStandardMaterial({ color: COLORS.drone })
+        );
+        mesh.castShadow = true;
+        group.add(mesh);
+      }
+
+      this.scene.add(group);
+      this.droneGroups.push(group);
+
+      const isStriker = i === 0;
       const g = isStriker
         ? new THREE.Mesh(
             new THREE.SphereGeometry(0.55, 12, 12),
@@ -133,6 +163,18 @@ export class Entities3D {
 
       this.droneTrails.push(makeTrail(20, COLORS.trail));
     }
+  }
+
+  private replaceGroupPlaceholder(group: THREE.Group): void {
+    while (group.children.length) {
+      const c = group.children[0];
+      group.remove(c);
+      if (c instanceof THREE.Mesh) {
+        c.geometry.dispose();
+        (c.material as THREE.Material).dispose();
+      }
+    }
+    group.add(this.droneModelTemplate!.clone(true));
   }
 
   private updateFormationRings(shahed: Shahed): void {
@@ -193,17 +235,12 @@ export class Entities3D {
     this.predMarker.visible = swarm.phase !== "ASCEND";
 
     for (let i = 0; i < swarm.drones.length; i++) {
-      if (i >= this.droneMeshes.length) break;
+      if (i >= this.droneGroups.length) break;
       const d = swarm.drones[i];
       const dx = d.x, dy = d.z, dz = -d.y;
-      this.droneMeshes[i].position.set(dx, dy, dz);
+      this.droneGroups[i].position.set(dx, dy, dz);
 
       const isStriker = i === swarm.activeIndex;
-      const mat = this.droneMeshes[i].material as THREE.MeshStandardMaterial;
-      mat.color.setHex(isStriker ? COLORS.striker : COLORS.drone);
-      mat.emissive.setHex(isStriker ? COLORS.strikerGlow : 0x000000);
-      mat.emissiveIntensity = isStriker ? 0.4 : 0;
-
       if (this.droneGlows[i]) {
         this.droneGlows[i]!.position.set(dx, dy, dz);
         this.droneGlows[i]!.visible = isStriker;
@@ -216,11 +253,14 @@ export class Entities3D {
 
     this.updateFormationRings(shahed);
 
-    if (swarm.eliminated !== null) {
-      this.droneMeshes[swarm.eliminated].material = new THREE.MeshStandardMaterial({
-        color: COLORS.eliminated,
-        emissive: COLORS.eliminated,
-        emissiveIntensity: 0.6,
+    if (swarm.eliminated !== null && swarm.eliminated < this.droneGroups.length) {
+      this.droneGroups[swarm.eliminated].traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          const mat = child.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(COLORS.eliminated);
+          mat.emissive.setHex(COLORS.eliminated);
+          mat.emissiveIntensity = 0.6;
+        }
       });
     }
   }
