@@ -13,12 +13,11 @@
 4 interceptor drones pursue a maneuvering target through 5 phases:
 
 ```
-ASCEND → CHASE → FOLLOW → FORM → ENGAGE
+ CHASE → FOLLOW → FORM → ENGAGE
 ```
 
 | Phase | What happens |
 |---|---|
-| **ASCEND** | Drones climb to target's altitude |
 | **CHASE** | Drones approach target toward formation slots (min 5s) |
 | **FOLLOW** | Close proximity maintained (avg distance ≤ 10) |
 | **FORM** | Square ring formation established (radius = 5) around target |
@@ -92,10 +91,3 @@ The entire Shepherd Grid Strategy lives in **`src/sim/Swarm.ts`** — state mach
 
 ---
 
-## Reference:
-
-> Kriuk, B. & Kriuk, F. "Shepherd Grid Strategy: Towards Reliable SWARM Interception." arXiv:2508.09536, 2025.
-
-📄 [arxiv.org/html/2508.09536v1](https://arxiv.org/html/2508.09536v1)
-
----
