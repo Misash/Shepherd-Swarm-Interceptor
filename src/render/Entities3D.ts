@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Shahed } from "../sim/Shahed";
 import { Swarm } from "../sim/Swarm";
 import { COLORS } from "./Colors";
@@ -43,6 +44,8 @@ export class Entities3D {
     this.scene = scene;
 
     this.shahedGroup = new THREE.Group();
+
+    // Placeholder sphere while GLB loads
     const body = new THREE.Mesh(
       new THREE.SphereGeometry(0.5, 16, 16),
       new THREE.MeshStandardMaterial({ color: COLORS.shahed, emissive: COLORS.shahedGlow, emissiveIntensity: 0.3 })
@@ -57,11 +60,29 @@ export class Entities3D {
     this.shahedCone.position.set(0.6, 0, 0);
     this.shahedGroup.add(this.shahedCone);
 
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.8, 16, 16),
-      new THREE.MeshBasicMaterial({ color: COLORS.shahedGlow, transparent: true, opacity: 0.15 })
-    );
-    this.shahedGroup.add(glow);
+    // Load Shahed-136 GLB model – reemplaza el placeholder al cargar
+    const loader = new GLTFLoader();
+    loader.load("/shahed-136.glb", (gltf) => {
+      const model = gltf.scene;
+
+      this.shahedGroup.remove(body);
+      body.geometry.dispose();
+      (body.material as THREE.Material).dispose();
+      this.shahedGroup.remove(this.shahedCone);
+      this.shahedCone.geometry.dispose();
+      (this.shahedCone.material as THREE.Material).dispose();
+
+      model.scale.set(1.2, 1.2, 1.2);
+      model.rotation.y = Math.PI / 2;
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+        }
+      });
+
+      this.shahedGroup.add(model);
+    });
+
     scene.add(this.shahedGroup);
 
     this.shahedTrail = makeTrail(30, COLORS.trailShahed);
@@ -152,7 +173,7 @@ export class Entities3D {
     this.shahedGroup.position.set(sx, sy, sz);
 
     const heading = shahed.heading();
-    this.shahedGroup.rotation.set(0, -heading, 0);
+    this.shahedGroup.rotation.set(0, heading, 0);
 
     updateTrail(this.shahedTrail, shahed.trail);
 
