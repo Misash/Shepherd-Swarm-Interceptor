@@ -66,7 +66,7 @@ export class Entities3D {
 
     // Load Shahed-136 GLB model – reemplaza el placeholder al cargar
     const loader = new GLTFLoader();
-    loader.load("/shahed-136.glb", (gltf) => {
+    loader.load(`${import.meta.env.BASE_URL}shahed-136.glb`, (gltf) => {
       const model = gltf.scene;
 
       this.shahedGroup.remove(body);
@@ -93,7 +93,7 @@ export class Entities3D {
     });
 
     const droneLoader = new GLTFLoader();
-    droneLoader.load("/drone.glb", (gltf) => {
+    droneLoader.load(`${import.meta.env.BASE_URL}drone.glb`, (gltf) => {
       const model = gltf.scene;
       model.scale.set(5, 10, 10);
       model.rotation.y = Math.PI / 2;
